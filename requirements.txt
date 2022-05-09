@@ -4,3 +4,4 @@ matplotlib==3.5.2
 streamlit==1.9.0
 fbprophet==0.7.1
 plotly==5.7.0
+pystan==2.19.1.1
