@@ -93,7 +93,8 @@ def predict():
    # This graph is show predictive moves
    ## how {} company rose or fall in future
    """.format(uploaded_file.name))
-   graph = model.plot(forcast)
+   p = plot_plotly(model,forcast)
+   st.plotly_chart(p,use_container_width=True)
    st.pyplot(graph)
    figure = go.Figure(data=[go.Candlestick(x=forcast["ds"],
                                          open=forcast["trend"],high=forcast["yhat_upper"],
