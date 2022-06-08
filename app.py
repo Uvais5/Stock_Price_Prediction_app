@@ -136,6 +136,7 @@ def compare_Price():
 
 
 if __name__=='__main__':
+    main()
      ############# function for bacgroud wallper instreamlit ################################
     def get_base64(bin_file):
         with open(bin_file, 'rb') as f:
@@ -155,4 +156,4 @@ if __name__=='__main__':
 
     set_background('main1.jpg')
     st.write(" # contact info : zaidsaifi523@gmail.com")
-    main()
+    
