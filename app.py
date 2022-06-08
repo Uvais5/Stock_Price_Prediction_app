@@ -95,7 +95,7 @@ def predict():
    """.format(uploaded_file.name))
    p = plot_plotly(model,forcast)
    st.plotly_chart(p,use_container_width=True)
-   st.pyplot(graph)
+
    figure = go.Figure(data=[go.Candlestick(x=forcast["ds"],
                                          open=forcast["trend"],high=forcast["yhat_upper"],
                                         low=forcast["yhat_lower"], close=forcast["yhat"])])
