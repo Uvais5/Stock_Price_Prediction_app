@@ -2,6 +2,11 @@
 
 ![Stock Prediction](https://github.com/Uvais5/Stock_Price_Prediction_app/blob/main/stock.png)
 
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-orange?logo=streamlit)](https://streamlit.io/)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)](#)
+
 ---
 
 ## 🔍 Overview
