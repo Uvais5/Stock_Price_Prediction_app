@@ -2,68 +2,82 @@
 
 ![Stock Prediction](https://github.com/Uvais5/Stock_Price_Prediction_app/blob/main/stock.png)
 
-> A sleek, interactive **Streamlit** application for predicting stock prices using **Facebook Prophet**. Simply upload your stock CSV file, and visualize future trends, monthly/weekly breakdowns, and compare real vs predicted prices. Ideal for learning, experimenting, and showcasing time series forecasting with a modern UI.
+---
+
+## 🔍 Overview
+
+This project is an end-to-end **web-based stock forecasting tool** built with **Python, Facebook Prophet**, and **Streamlit**. Users can upload stock price data (CSV format from Yahoo Finance), visualize historical prices, and generate future predictions (up to 1 year) with interactive charts.
+
+Designed for **students, data science beginners, and financial enthusiasts**, this app demonstrates how time series forecasting works using real-world stock data. It also helps users compare predicted prices with actual prices on selected dates — all through a clean and interactive interface.
 
 ---
 
-### 🚀 Live Demo
+## 🎯 Use Case & Purpose
 
-👉 **[Try the App Now](https://share.streamlit.io/uvais5/stock_price_prediction_app/main/app.py)**
+This project is ideal for:
 
----
+- 📊 **Understanding Time Series Forecasting** in a visual and practical way
+- 🎓 **Learning how to deploy ML models** using Streamlit
+- 💹 **Exploring stock trends** and simulating future predictions
+- 🧪 **Educational demos** in data science and machine learning
 
-### 🧠 Use Case & Goal
-
-This app is built for:
-
-- 🧪 **Experimentation with forecasting models** (Prophet).
-- 📚 **Educational use** to understand stock prediction pipelines.
-- 💡 **Learning time series visualization** using `Plotly`, `Streamlit`, and real-world data.
-- 🔬 **Comparing predicted vs actual stock prices** on specific dates.
-
-> ⚠️ This project is **for educational and demonstration purposes only**, not intended for financial advice or trading.
+> ⚠️ This project is for **educational use only** and should **not** be used for real trading or financial decision-making.
 
 ---
 
-### 🛠 Tech Stack & Tools
+## 🚀 Live Demo
 
-| Tool        | Purpose                        |
-|-------------|--------------------------------|
-| 🐍 Python    | Core programming language      |
-| 📈 Prophet   | Time series forecasting        |
-| 📊 Plotly    | Rich interactive visualizations|
-| 🎨 Streamlit | Web-based ML App UI            |
-| 🖼 Pillow    | Displaying images              |
-| 📂 Pandas    | Data manipulation              |
+👉 Try the app here: [Streamlit Live App](https://share.streamlit.io/uvais5/stock_price_prediction_app/main/app.py)
 
 ---
 
-### 📂 Features
+## 🛠 Tech Stack
 
-- Upload historical **CSV stock data** from Yahoo Finance.
-- Build & train **Prophet** forecasting model.
-- Interactive graphs for:
-  - ✅ Historical candlestick chart
-  - ✅ Future predictions
-  - ✅ Monthly/yearly/weekly component analysis
-  - ✅ Compare predicted price vs actual price on a selected date
-- 📅 Predict 365 days into the future
-- 🌄 Stylish background & onboarding guide
+| Technology    | Role                               |
+|---------------|------------------------------------|
+| Python        | Programming language               |
+| Prophet       | Time series forecasting model      |
+| Streamlit     | Frontend for web-based ML app      |
+| Plotly        | Interactive plotting library       |
+| Pandas        | Data manipulation                  |
+| Pillow        | Image display                      |
 
 ---
 
-### 🔧 Installation
+## 💡 Features
+
+- Upload historical stock CSV data from Yahoo Finance
+- Cleanly visualize historical trends with candlestick charts
+- Generate **365-day future forecasts**
+- View **monthly**, **weekly**, and **yearly** prediction components
+- Compare predicted prices with actual prices on a specific date
+- Step-by-step guide for users unfamiliar with stock data sources
+
+---
+
+## 🧠 Forecasting Model
+
+This app uses the [Facebook Prophet](https://facebook.github.io/prophet/) forecasting model. Prophet is robust, easy to use, and handles:
+
+- Seasonality (weekly/monthly)
+- Trend changes
+- Missing data
+- Outliers
+
+Prophet is well-suited for business forecasting, making it a great educational tool.
+
+---
+
+## 🔧 Installation
 
 ```bash
-# 1. Clone the repo
+# Clone the repository
 git clone https://github.com/Uvais5/Stock_Price_Prediction_app.git
 cd Stock_Price_Prediction_app
 
-# 2. Create a virtual environment
+# Create virtual environment (optional but recommended)
 python -m venv venv
-source venv/bin/activate    # On Windows use: venv\Scripts\activate
+source venv/bin/activate      # On Windows: venv\Scripts\activate
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
-# If requirements.txt is missing, install manually:
-# pip install streamlit fbprophet pandas plotly pillow
