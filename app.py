@@ -152,6 +152,11 @@ if st.session_state.data is None or st.session_state.data.empty:
 ###############################################################################
 
 # Only re-process data if new data is loaded or if it's the first time processing
+###############################################################################
+# Prepare dataset for Prophet                                                 #
+###############################################################################
+
+# Only re-process data if new data is loaded or if it's the first time processing
 if st.session_state.data_loaded or st.session_state.prophet_df is None:
     data_to_process = st.session_state.data.copy()
 
@@ -171,6 +176,10 @@ if st.session_state.data_loaded or st.session_state.prophet_df is None:
         .sort_values("ds")
         .reset_index(drop=True)
     )
+    # --- IMPORTANT FIX: Remove timezone from 'ds' column for Prophet ---
+    prophet_df_cleaned['ds'] = prophet_df_cleaned['ds'].dt.tz_localize(None)
+    # -------------------------------------------------------------------
+
     st.session_state.prophet_df = prophet_df_cleaned
     # Reset the flag after processing
     st.session_state.data_loaded = False
