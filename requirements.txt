@@ -1,7 +1,8 @@
-numpy==1.22.3
-pandas==1.4.2
-matplotlib==3.5.2
-streamlit==1.9.0
-fbprophet==0.7.1
-plotly==5.7.0
-pystan==2.19.1.1
+pip install --upgrade pip 'setuptools<81'
+pip install cython==0.29.36              
+pip install numpy==1.19.5
+pip install pandas==1.1.5
+pip intall matplotlib==3.3.4
+pip install pystan==2.19.1.1
+pip install fbprophet==0.7.1             
+pip install streamlit==1.9.0 plotly==5.7.0
