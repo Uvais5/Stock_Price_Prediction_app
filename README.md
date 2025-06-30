@@ -21,11 +21,11 @@ Designed for **students, data science beginners, and financial enthusiasts**, th
 ## 🎬 Project Demo
 
 <div align="center">
-  <a href="https://youtu.be/kZP5kroO56Q?si=IAgaUtPpsjqIgkni" target="_blank">
+  <a href="https://youtu.be/1_9JIDRSZOM" target="_blank">
     <img src="stock_thumbnail.png" alt="Watch Anime Recommendation System Demo" width="640">
   </a>
   <br>
-  <strong><a href="https://www.youtube.com/watch?v=DF53aO3G2jQ&ab_channel=uvaissaifi" target="_blank">▶️ Watch:Stock Price Prediction Web App (with Prophet)</a></strong>
+  <strong><a href="https://youtu.be/1_9JIDRSZOM" target="_blank">▶️ Watch:Stock Price Prediction Web App (with Prophet)</a></strong>
   <p>Video by Data Science Solutions</p>
 </div>
 
