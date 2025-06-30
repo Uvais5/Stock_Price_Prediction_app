@@ -49,7 +49,7 @@ This project is ideal for:
 
 ## 🚀 Live Demo
 
-👉 Try the app here: [Streamlit Live App](https://share.streamlit.io/uvais5/stock_price_prediction_app/main/app.py)
+👉 Try the app here: [Streamlit Live App](https://uvais5-stock-price-prediction-app-app-qu3l7o.streamlit.app/)
 
 ---
 
