@@ -6,6 +6,4 @@ protobuf==3.20.3
 altair==4.2.2
 prophet==1.1.7
 plotly==5.7.0
-cython==0.29.36
-pystan==2.19.1.1
-fbprophet==0.7.1
+
