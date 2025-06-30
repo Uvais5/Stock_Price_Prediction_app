@@ -68,7 +68,7 @@ if source == "Upload CSV":
         st.stop()
 
 # ────────────────────────────────────────────────────────────────────────────
-# 2. Download using yfinance
+# 2. Download using yfinance (Ticker.history avoids timezone bug)             
 # ────────────────────────────────────────────────────────────────────────────
 if source == "Download from Yahoo Finance":
     ticker = st.sidebar.text_input("Ticker", "AAPL", max_chars=8).upper().strip()
@@ -83,21 +83,15 @@ if source == "Download from Yahoo Finance":
             st.stop()
         with st.spinner("Downloading from Yahoo Finance…"):
             try:
-                data = yf.download(
-                    ticker,
-                    start=start_date,
-                    end=end_date + pd.Timedelta(days=1),  # include end day
-                    interval="1d",
-                    progress=False,
-                    auto_adjust=False,
-                    threads=True,
-                )
+                ticker_obj = yf.Ticker(ticker)
+                data = ticker_obj.history(start=start_date, end=end_date + pd.Timedelta(days=1), interval="1d")
             except Exception as e:
                 st.error(f"Download failed: {e}")
                 st.stop()
-        if data.empty:
+        if data is None or data.empty:
             st.error("No data returned – check symbol or try again later.")
             st.stop()
+        # history returns index as DatetimeIndex; reset to column
         data.reset_index(inplace=True)
         symbol_title = ticker
         st.success(f"✅ Downloaded {len(data)} rows for **{symbol_title}**")
@@ -244,6 +238,4 @@ def monthly():
     m = Prophet(changepoint_prior_scale=0.01).fit(prophet_df)
     fut = m.make_future_dataframe(periods=12, freq="M")
     fcst = m.predict(fut)
-    fig, ax = plt.subplots(figsize=(10, 4))
-    m.plot(fcst, ax=ax)
-    st.pyplot(fig)
+    fig, ax = plt.subplots(figsize=(
