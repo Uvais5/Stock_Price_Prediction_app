@@ -25,7 +25,7 @@ Designed for **students, data science beginners, and financial enthusiasts**, th
     <img src="stock_thumbnail.png" alt="Watch Anime Recommendation System Demo" width="640">
   </a>
   <br>
-  <strong><a href="https://www.youtube.com/watch?v=DF53aO3G2jQ&ab_channel=uvaissaifi" target="_blank">▶️ Watch: Build a Content-Based Anime Recommender System</a></strong>
+  <strong><a href="https://www.youtube.com/watch?v=DF53aO3G2jQ&ab_channel=uvaissaifi" target="_blank">▶️ Watch:Stock Price Prediction Web App (with Prophet)</a></strong>
   <p>Video by Data Science Solutions</p>
 </div>
 
