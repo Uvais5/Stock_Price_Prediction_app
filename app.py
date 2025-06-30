@@ -314,12 +314,11 @@ def actual_vs_pred():
     st.plotly_chart(fig, use_container_width=True)
     st.markdown("""
     **About this graph:** This plot directly compares the actual historical stock prices with the Prophet model's predictions for the same historical period.
-    * **Orange line:** Represents the actual closing prices.
-    * **Blue line:** Represents the Prophet model's predicted prices (yhat) for the historical period.
+    * **Blue line:** Represents the **actual** closing prices.
+    * **Orange/Red line:** Represents the Prophet model's **predicted** prices (`yhat`).
     * **Shaded area:** The uncertainty interval around the predicted values.
-    * **Trend and Accuracy:** Ideally, the "Actual" line should closely follow the "Predicted" line within the shaded uncertainty band. This helps assess how well the model has learned the historical trend and patterns. Divergence indicates that the model might not be capturing all the nuances of the stock's movement.
+    * **Trend and Accuracy:** Ideally, the "Actual" (blue) line should closely follow the "Predicted" (orange/red) line within the shaded uncertainty band. This helps assess how well the model has learned the historical trend and patterns. Divergence indicates that the model might not be capturing all the nuances of the stock's movement.
     """)
-
 
 def residuals():
     merged = pd.merge(prophet_df_cleaned, forecast[["ds", "yhat"]], on="ds", how="inner")
