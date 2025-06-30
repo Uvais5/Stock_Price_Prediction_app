@@ -9,6 +9,7 @@ import streamlit as st
 from PIL import Image
 from prophet import Prophet
 from prophet.plot import plot_components_plotly, plot_plotly
+import yfinance as yf  # <-- NEW: automatic data downloader
 
 ###############################################################################
 # Helper – optional background image                                           #
@@ -34,41 +35,74 @@ def set_background(png_file: str):
     )
 
 ###############################################################################
-# File‑upload & common preprocessing                                           #
+# Sidebar – choose data source                                                 #
 ###############################################################################
 
 st.title("📈 Simple Stock‑Price Prediction App (Prophet)")
 
-uploaded_files = st.file_uploader(
-    "Upload one or more CSV files exported from Yahoo Finance",
-    accept_multiple_files=True,
-    type="csv",
-)
+source = st.sidebar.selectbox("How would you like to load data?", ("Upload CSV", "Download from Yahoo Finance"))
 
-if not uploaded_files:
-    st.info("⬆️ Upload a CSV file to get started.")
-    st.stop()
+data = None  # will hold the final DataFrame used everywhere
+symbol_title = ""
 
-# NOTE: we only keep the last uploaded dataset in global scope so that the
-# sidebar pages all work with the same variables below. You can extend this to
-# manage multiple symbols at once if needed.
-for uploaded_file in uploaded_files:
+if source == "Upload CSV":
+    uploaded_files = st.sidebar.file_uploader("Upload CSV file(s)", accept_multiple_files=True, type="csv")
+
+    if not uploaded_files:
+        st.info("⬆️ Upload a CSV file to get started, **or** switch to the download option in the sidebar.")
+        st.stop()
+
+    # Keep only the last uploaded file as the active dataset
+    uploaded_file = uploaded_files[-1]
+    symbol_title = uploaded_file.name.split(".")[0]
     data = pd.read_csv(uploaded_file)
 
-    # Prophet expects columns named ds (date) and y (value to forecast)
-    data["Date"] = pd.to_datetime(data["Date"])
-    data1 = (
-        data[["Date", "Close"]]
-        .rename(columns={"Date": "ds", "Close": "y"})
-        .sort_values("ds")
-        .reset_index(drop=True)
-    )
+elif source == "Download from Yahoo Finance":
+    ticker = st.sidebar.text_input("Ticker symbol", value="AAPL", max_chars=10)
+    col1, col2 = st.sidebar.columns(2)
+    start_date = col1.date_input("Start", value=pd.to_datetime("2024-01-01"))
+    end_date = col2.date_input("End", value=pd.to_datetime("today"))
 
-    model = Prophet()
-    model.fit(data1)
+    fetch_clicked = st.sidebar.button("🔽 Fetch data")
 
-    future = model.make_future_dataframe(periods=365)
-    forecast = model.predict(future)
+    if fetch_clicked:
+        if start_date >= end_date:
+            st.error("Start date must be before end date.")
+            st.stop()
+        try:
+            df = yf.download(ticker.upper(), start=start_date, end=end_date, interval="1d", auto_adjust=False)
+        except Exception as e:
+            st.error(f"Download failed: {e}")
+            st.stop()
+        if df.empty:
+            st.error("No data returned – check the ticker symbol and date range.")
+            st.stop()
+        df.reset_index(inplace=True)
+        data = df
+        symbol_title = ticker.upper()
+        st.success(f"Downloaded {len(data)} rows for {symbol_title} ✨")
+
+if data is None:
+    st.stop()  # nothing to work with
+
+###############################################################################
+# Prophet model fit & forecast                                                 #
+###############################################################################
+
+data["Date"] = pd.to_datetime(data["Date"])
+
+data1 = (
+    data[["Date", "Close"]]
+    .rename(columns={"Date": "ds", "Close": "y"})
+    .sort_values("ds")
+    .reset_index(drop=True)
+)
+
+model = Prophet()
+model.fit(data1)
+
+future = model.make_future_dataframe(periods=365)
+forecast = model.predict(future)
 
 ###############################################################################
 # Sidebar navigation                                                           #
@@ -89,8 +123,6 @@ page = st.sidebar.radio(
     ),
 )
 
-symbol_title = uploaded_file.name.split(".")[0]
-
 ###############################################################################
 # Page implementations                                                         #
 ###############################################################################
@@ -100,14 +132,18 @@ def page_home():
     st.markdown(
         f"""
         ### Predict stock **closing prices** with [Prophet]({url})
-        1. Download historical data (CSV) from *Yahoo Finance*.
-        2. Upload it with the *Browse* button.
-        3. Browse the interactive visualisations in the sidebar.
+
+        **Data loaded for:** `{symbol_title}`  
+        Rows: **{len(data)}**   Date range: **{data['Date'].min().date()} → {data['Date'].max().date()}**
+
+        ---
+        #### Data‑loading options
+        * **Upload CSV** – any file with Yahoo Finance column layout.
+        * **Download** – enter a ticker and date range in the sidebar; the app pulls data automatically with [`yfinance`](https://github.com/ranaroussi/yfinance).
         """
     )
-    st.image(Image.open("google.png"), caption="Search Yahoo Finance in Google")
-    st.image(Image.open("gg.png"), caption="Download historical data")
-    st.image(Image.open("aa.png"), caption="Upload CSV in the app")
+    st.write("Preview:")
+    st.dataframe(data.head())
 
 
 def page_candlestick():
@@ -169,7 +205,18 @@ def page_residuals():
     fig.add_trace(
         go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines+markers", name="Residual")
     )
-    fig.update_layout(shapes=[{"type": "line", "x0": merged["ds"].min(), "y0": 0, "x1": merged["ds"].max(), "y1": 0, "line": {"dash": "dash"}}])
+    fig.update_layout(
+        shapes=[
+            {
+                "type": "line",
+                "x0": merged["ds"].min(),
+                "y0": 0,
+                "x1": merged["ds"].max(),
+                "y1": 0,
+                "line": {"dash": "dash"},
+            }
+        ]
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -201,47 +248,12 @@ def page_monthly():
 
 def page_compare():
     st.subheader("Compare actual vs predicted price on a specific date")
-    st.write(
-        "Data range:",
-        data["Date"].iloc[0].strftime("%Y‑%m‑%d"),
-        "→",
-        data["Date"].iloc[-1].strftime("%Y‑%m‑%d"),
-    )
-    st.write("Forecast horizon ends:", forecast["ds"].iloc[-1].date())
-
-    compare_date = st.date_input("Pick a date to compare")
+    compare_date = st.date_input("Pick a date to compare", value=data["Date"].iloc[-1].date())
     if compare_date:
         actual = data1.loc[data1["ds"] == pd.to_datetime(compare_date), "y"]
         predicted = forecast.loc[forecast["ds"] == pd.to_datetime(compare_date), "yhat"]
-        st.write("Actual close price:", float(actual) if not actual.empty else "N/A")
-        st.write("Predicted close price:", float(predicted) if not predicted.empty else "N/A")
+        st.write("Actual close:", float(actual) if not actual.empty else "N/A")
+        st.write("Predicted close:", float(predicted) if not predicted.empty else "N/A")
 
 ###############################################################################
 # Router                                                                       #
-###############################################################################
-
-if page == "Home":
-    page_home()
-elif page == "Historical Candlestick":
-    page_candlestick()
-elif page == "Forecast Line":
-    page_forecast_line()
-elif page == "Actual vs Predicted":
-    page_actual_vs_pred()
-elif page == "Residuals by Date":
-    page_residuals()
-elif page == "Error Histogram":
-    page_histogram()
-elif page == "Components (Year / Week)":
-    page_components()
-elif page == "Monthly Forecast (12 mo)":
-    page_monthly()
-elif page == "Compare Price":
-    page_compare()
-
-###############################################################################
-# Footer                                                                       #
-###############################################################################
-
-# set_background("main1.jpg")  # uncomment if you want a background image
-st.caption("📧 Contact: zaidsaifi523@gmail.com")
