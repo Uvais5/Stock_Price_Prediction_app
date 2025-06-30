@@ -6,6 +6,9 @@
 [![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-orange?logo=streamlit)](https://streamlit.io/)
 [![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4-red)](#)
 
+<p align="center">
+  <img src="intro_stock.gif" alt="App screenshot" width="800">
+</p>
 ---
 
 ## 🔍 Overview
@@ -13,6 +16,22 @@
 This project is an end-to-end **web-based stock forecasting tool** built with **Python, Facebook Prophet**, and **Streamlit**. Users can upload stock price data (CSV format from Yahoo Finance), visualize historical prices, and generate future predictions (up to 1 year) with interactive charts.
 
 Designed for **students, data science beginners, and financial enthusiasts**, this app demonstrates how time series forecasting works using real-world stock data. It also helps users compare predicted prices with actual prices on selected dates — all through a clean and interactive interface.
+
+---
+
+## 🎬 Project Demo
+
+<div align="center">
+  <a href="https://youtu.be/kZP5kroO56Q?si=IAgaUtPpsjqIgkni" target="_blank">
+    <img src="stock_thumbnail.png" alt="Watch Anime Recommendation System Demo" width="640">
+  </a>
+  <br>
+  <strong><a href="https://www.youtube.com/watch?v=DF53aO3G2jQ&ab_channel=uvaissaifi" target="_blank">▶️ Watch: Build a Content-Based Anime Recommender System</a></strong>
+  <p>Video by Data Science Solutions</p>
+</div>
+
+> ⚠️ GitHub does not support embedding actual YouTube videos. Clicking the image will open the video in a new tab.
+
 
 ---
 
