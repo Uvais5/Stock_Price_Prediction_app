@@ -254,4 +254,4 @@ def monthly():
 
 
 def compare_price():
-    st.subheader("Compare actual vs.
+    st.subheader("Compare actual vs.")
