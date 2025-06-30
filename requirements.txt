@@ -6,4 +6,4 @@ protobuf==3.20.3
 altair==4.2.2
 prophet==1.1.7
 plotly==5.7.0
-
+yahoo-finance==1.4.0
