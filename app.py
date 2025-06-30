@@ -1,160 +1,247 @@
-import numpy as np 
-import pandas as pd 
-import  matplotlib.pyplot as plt
-import streamlit as st
-from fbprophet import Prophet
-from io import StringIO
-import plotly.graph_objects as go 
-from PIL import Image
-from fbprophet.plot import plot_plotly,plot_components_plotly
 import base64
+from io import StringIO
 
-#streamlit title
-st.title("Simple Stock Price Prediction App")
-#upload function for csv uploader
-uploaded_files = st.file_uploader("Choose a CSV file", accept_multiple_files=True)# only accept csv
-for uploaded_file in uploaded_files:# when csv insert to our app
-    data = pd.read_csv(uploaded_file)# now we read our file.
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+from PIL import Image
+from prophet import Prophet
+from prophet.plot import plot_components_plotly, plot_plotly
 
-    data["Date"] = pd.to_datetime(data["Date"])#Then we use datetime function for to read date
-    data1 = data[["Date","Close"]]# Then i chose only two columns 
-    data1 = data1.rename(columns = {"Date" : "ds", "Close" : "y"})# i need to rename the column because ds and y is like parameter for fbprohit model
-    model = Prophet()# Define our model
-    model.fit(data1)
+###############################################################################
+# Helper – optional background image                                           #
+###############################################################################
 
-    Predict = model.make_future_dataframe(periods = 365)
-    forcast = model.predict(Predict)
+def _get_base64(bin_file: str) -> str:
+    with open(bin_file, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 
-def main():
-    page = st.sidebar.selectbox(
-        "Select the option",
-        ("Homepage","Normal_graph","Predict Graph1","Monthly Prediction \n 1 year time frame","Predictive_Graph_yearly and weakly","Compare_Price"),
+def set_background(png_file: str):
+    bin_str = _get_base64(png_file)
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{bin_str}");
+            background-size: cover;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
-    if page == "Homepage":
-        homepage()
-    elif page == "Normal_graph":
-        line_graph()
-    elif page == "Predict Graph1":
-        predict()
-    elif page == "Predict Graph1":
-        predict()
-    elif page == "Monthly Prediction \n 1 year time frame":
-        predict1()
-    elif page == "Predictive_Graph_yearly and weakly":
-        predict2()
-    elif page == "Compare_Price":
-        compare_Price()
+###############################################################################
+# File‑upload & common preprocessing                                           #
+###############################################################################
 
+st.title("📈 Simple Stock‑Price Prediction App (Prophet)")
 
+uploaded_files = st.file_uploader(
+    "Upload one or more CSV files exported from Yahoo Finance",
+    accept_multiple_files=True,
+    type="csv",
+)
 
-def homepage():
+if not uploaded_files:
+    st.info("⬆️ Upload a CSV file to get started.")
+    st.stop()
+
+# NOTE: we only keep the last uploaded dataset in global scope so that the
+# sidebar pages all work with the same variables below. You can extend this to
+# manage multiple symbols at once if needed.
+for uploaded_file in uploaded_files:
+    data = pd.read_csv(uploaded_file)
+
+    # Prophet expects columns named ds (date) and y (value to forecast)
+    data["Date"] = pd.to_datetime(data["Date"])
+    data1 = (
+        data[["Date", "Close"]]
+        .rename(columns={"Date": "ds", "Close": "y"})
+        .sort_values("ds")
+        .reset_index(drop=True)
+    )
+
+    model = Prophet()
+    model.fit(data1)
+
+    future = model.make_future_dataframe(periods=365)
+    forecast = model.predict(future)
+
+###############################################################################
+# Sidebar navigation                                                           #
+###############################################################################
+
+page = st.sidebar.radio(
+    "Navigate",
+    (
+        "Home",
+        "Historical Candlestick",
+        "Forecast Line",
+        "Actual vs Predicted",
+        "Residuals by Date",
+        "Error Histogram",
+        "Components (Year / Week)",
+        "Monthly Forecast (12 mo)",
+        "Compare Price",
+    ),
+)
+
+symbol_title = uploaded_file.name.split(".")[0]
+
+###############################################################################
+# Page implementations                                                         #
+###############################################################################
+
+def page_home():
     url = "https://facebook.github.io/prophet/"
-    
-    
-    st.write("""
-        ### You can predict the stock price (closing price)  using this app****  
-        we use [Fbprophite](%s) to predict the stock price.
-        how Facebook Prophite works just click on the link and you can see how its works  
-        #""" % url)
-  
-    st.write("""
-    # How to use this app 
-    """)
-    st.write("1. Search  yahoo finance on google and open the first link")
-    image = Image.open('google.png')
-    st.image(image, caption='IN chrome')
-    st.write("2. In yahoo finance search bar, Search any company's stock you want to buy and click the company data.")
-    st.write("Then click historical data and download the data")
-    image = Image.open('gg.png')
-    st.image(image, caption='')
-    st.write("3. Then click the browse file and add the data ")
-    image = Image.open("aa.png")
-    st.image(image)
+    st.markdown(
+        f"""
+        ### Predict stock **closing prices** with [Prophet]({url})
+        1. Download historical data (CSV) from *Yahoo Finance*.
+        2. Upload it with the *Browse* button.
+        3. Browse the interactive visualisations in the sidebar.
+        """
+    )
+    st.image(Image.open("google.png"), caption="Search Yahoo Finance in Google")
+    st.image(Image.open("gg.png"), caption="Download historical data")
+    st.image(Image.open("aa.png"), caption="Upload CSV in the app")
 
 
-
-def line_graph():
-    st.write("""
-    # {} This graph is only show past data
-    """.format(uploaded_file.name))
-    
-    figure = go.Figure(data=[go.Candlestick(x=data["Date"],
-                                         open=data["Open"],high=data["High"],
-                                        low=data["Low"], close=data["Close"])])
-    figure.update_layout(title = "{} Stock Price Analysis".format(uploaded_file.name), xaxis_rangeslider_visible=False)
-    figure.show()
-    st.plotly_chart(figure,use_container_width=True)
-
-    
-def predict():
-   st.write("""
-   # This graph is show predictive moves
-   ## how {} company rose or fall in future
-   """.format(uploaded_file.name))
-   p = plot_plotly(model,forcast)
-   st.plotly_chart(p,use_container_width=True)
-
-   figure = go.Figure(data=[go.Candlestick(x=forcast["ds"],
-                                         open=forcast["trend"],high=forcast["yhat_upper"],
-                                        low=forcast["yhat_lower"], close=forcast["yhat"])])
-   figure.update_layout(title = "{} Stock Price Prediction".format(uploaded_file.name), xaxis_rangeslider_visible=False)
-   figure.show()
-   st.plotly_chart(figure,use_container_width=True)
+def page_candlestick():
+    st.subheader(f"Historical prices – {symbol_title}")
+    fig = go.Figure(
+        data=[
+            go.Candlestick(
+                x=data["Date"],
+                open=data["Open"],
+                high=data["High"],
+                low=data["Low"],
+                close=data["Close"],
+            )
+        ]
+    )
+    fig.update_layout(title=f"{symbol_title} – Price history", xaxis_rangeslider_visible=False)
+    st.plotly_chart(fig, use_container_width=True)
 
 
-def predict1():
-   st.write("""
-   # This graph show how {} progress in future
-   ## Either price is up or down
-   """.format(uploaded_file.name))
-   m = Prophet(changepoint_prior_scale=0.01).fit(data1)
-   future = m.make_future_dataframe(periods=12, freq='M')
-   fcst = m.predict(future)
-   fig = m.plot(fcst)
-   plt.title("Monthly Prediction \n 1 year time frame")
-   st.pyplot(fig)
-
-def predict2():
-    st.write("## {} monthly and weakly data".format(uploaded_file.name))
-    fig2 = plot_components_plotly(model,forcast)
-    st.plotly_chart(fig2)
-# now i crate functiom por compare stock price 
-def compare_Price():
-    st.title("________________________________")
-    st.write("This is the starting date of this data",data["Date"].iloc[0],"and this is the last date of this data",data["Date"].iloc[-1])
-    st.write("This is the last date of predition",forcast["ds"].iloc[-1])
-    st.title("________________________________")
-    input22 = st.date_input(label="Particular date for compare price")
-    input = str(input22)
-    normal = data1[data1.ds == input ]["y"]
-    predictive = forcast[forcast.ds == input ]["yhat"]
-    # st.write(input)
-    st.write(normal,"y means actual price(close)")
-    st.write(predictive,"yhat means predict price(close)")
-    st.write("# y and ywhat is price (close)")
+def page_forecast_line():
+    st.subheader(f"12‑month forecast – {symbol_title}")
+    fig = plot_plotly(model, forecast)
+    st.plotly_chart(fig, use_container_width=True)
 
 
-if __name__=='__main__':
-    main()
-     ############# function for bacgroud wallper instreamlit ################################
-    def get_base64(bin_file):
-        with open(bin_file, 'rb') as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    def set_background(png_file):
-        bin_str = get_base64(png_file)
-        page_bg_img = '''
-    <style>
-    .stApp {
-      background-image: url("data:image/png;base64,%s");
-      background-size: cover;
-    }
-    </style>
-        ''' % bin_str
-        st.markdown(page_bg_img, unsafe_allow_html=True)
+def page_actual_vs_pred():
+    st.subheader("Actual vs predicted close price")
+    merged = pd.merge(
+        data1,
+        forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]],
+        on="ds",
+        how="inner",
+    )
 
-    set_background('main1.jpg')
-    st.write(" # contact info : zaidsaifi523@gmail.com")
-    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=merged["ds"], y=merged["y"], name="Actual", mode="lines"))
+    fig.add_trace(go.Scatter(x=merged["ds"], y=merged["yhat"], name="Predicted", mode="lines"))
+    fig.add_trace(
+        go.Scatter(
+            x=pd.concat([merged["ds"], merged["ds"][::-1]]),
+            y=pd.concat([merged["yhat_upper"], merged["yhat_lower"][::-1]]),
+            fill="toself",
+            fillcolor="rgba(0,100,80,0.2)",
+            line=dict(color="rgba(255,255,255,0)"),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.update_layout(showlegend=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def page_residuals():
+    st.subheader("Prediction residuals (actual − predicted)")
+    merged = pd.merge(data1, forecast[["ds", "yhat"]], on="ds", how="inner")
+    merged["residual"] = merged["y"] - merged["yhat"]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines+markers", name="Residual")
+    )
+    fig.update_layout(shapes=[{"type": "line", "x0": merged["ds"].min(), "y0": 0, "x1": merged["ds"].max(), "y1": 0, "line": {"dash": "dash"}}])
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def page_histogram():
+    st.subheader("Distribution of residuals")
+    merged = pd.merge(data1, forecast[["ds", "yhat"]], on="ds", how="inner")
+    merged["residual"] = merged["y"] - merged["yhat"]
+
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=merged["residual"], nbinsx=50))
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def page_components():
+    st.subheader("Yearly & weekly components")
+    fig = plot_components_plotly(model, forecast)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def page_monthly():
+    st.subheader("Monthly forecast (next 12 months)")
+    m = Prophet(changepoint_prior_scale=0.01).fit(data1)
+    fut = m.make_future_dataframe(periods=12, freq="M")
+    fcst = m.predict(fut)
+    fig = m.plot(fcst)
+    plt.title("Monthly forecast – 12 months")
+    st.pyplot(fig)
+
+
+def page_compare():
+    st.subheader("Compare actual vs predicted price on a specific date")
+    st.write(
+        "Data range:",
+        data["Date"].iloc[0].strftime("%Y‑%m‑%d"),
+        "→",
+        data["Date"].iloc[-1].strftime("%Y‑%m‑%d"),
+    )
+    st.write("Forecast horizon ends:", forecast["ds"].iloc[-1].date())
+
+    compare_date = st.date_input("Pick a date to compare")
+    if compare_date:
+        actual = data1.loc[data1["ds"] == pd.to_datetime(compare_date), "y"]
+        predicted = forecast.loc[forecast["ds"] == pd.to_datetime(compare_date), "yhat"]
+        st.write("Actual close price:", float(actual) if not actual.empty else "N/A")
+        st.write("Predicted close price:", float(predicted) if not predicted.empty else "N/A")
+
+###############################################################################
+# Router                                                                       #
+###############################################################################
+
+if page == "Home":
+    page_home()
+elif page == "Historical Candlestick":
+    page_candlestick()
+elif page == "Forecast Line":
+    page_forecast_line()
+elif page == "Actual vs Predicted":
+    page_actual_vs_pred()
+elif page == "Residuals by Date":
+    page_residuals()
+elif page == "Error Histogram":
+    page_histogram()
+elif page == "Components (Year / Week)":
+    page_components()
+elif page == "Monthly Forecast (12 mo)":
+    page_monthly()
+elif page == "Compare Price":
+    page_compare()
+
+###############################################################################
+# Footer                                                                       #
+###############################################################################
+
+# set_background("main1.jpg")  # uncomment if you want a background image
+st.caption("📧 Contact: zaidsaifi523@gmail.com")
