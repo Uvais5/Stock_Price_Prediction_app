@@ -1,4 +1,5 @@
 import base64
+from typing import Optional
 from io import StringIO
 import time
 
@@ -7,7 +8,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from PIL import Image
 from prophet import Prophet
 from prophet.plot import plot_components_plotly, plot_plotly
 import yfinance as yf
@@ -50,7 +50,7 @@ source = st.sidebar.selectbox(
     ),
 )
 
-data: pd.DataFrame | None = None
+data: Optional[pd.DataFrame] = None
 symbol_title: str = ""
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ page = st.sidebar.radio(
         "Historical Candlestick",
         "Forecast Line",
         "Actual vs Predicted",
-        "Residuals",  # date + histogram combined
+        "Residuals",
         "Components (Year / Week)",
         "Monthly Forecast (12 mo)",
         "Compare Price",
@@ -160,10 +160,9 @@ def overview():
     url = "https://facebook.github.io/prophet/"
     st.markdown(
         f"""
-        ### Prophet forecast for `{symbol_title}`
-        *Rows*: **{len(clean)}**    *Date range*: {clean['Date'].min().date()} → {clean['Date'].max().date()}
-
-        **Model doc**: [Prophet]({url})
+        ### Prophet forecast for `{symbol_title}`  
+        **Rows**: {len(clean)}    •    **Date range**: {clean['Date'].min().date()} → {clean['Date'].max().date()}  
+        **Model docs**: [Prophet]({url})
         """
     )
     st.dataframe(clean.head())
@@ -189,8 +188,7 @@ def candlestick():
 
 def forecast_line():
     st.subheader("1‑year forecast")
-    fig = plot_plotly(model, forecast)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(plot_plotly(model, forecast), use_container_width=True)
 
 
 def actual_vs_pred():
@@ -225,9 +223,7 @@ def residuals():
     with col1:
         st.subheader("Residuals over time")
         fig1 = go.Figure()
-        fig1.add_trace(
-            go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines", name="Residual")
-        )
+        fig1.add_trace(go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines", name="Residual"))
         fig1.add_hline(y=0, line_dash="dash")
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -251,7 +247,3 @@ def monthly():
     fig, ax = plt.subplots(figsize=(10, 4))
     m.plot(fcst, ax=ax)
     st.pyplot(fig)
-
-
-def compare_price():
-    st.subheader("Compare actual vs.")
