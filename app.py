@@ -1,5 +1,6 @@
 import base64
 from io import StringIO
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +10,7 @@ import streamlit as st
 from PIL import Image
 from prophet import Prophet
 from prophet.plot import plot_components_plotly, plot_plotly
-import yfinance as yf  # <-- NEW: automatic data downloader
+import yfinance as yf
 
 ###############################################################################
 # Helper – optional background image                                           #
@@ -21,6 +22,7 @@ def _get_base64(bin_file: str) -> str:
 
 
 def set_background(png_file: str):
+    """Set a full‑screen background image inside Streamlit."""
     bin_str = _get_base64(png_file)
     st.markdown(
         f"""
@@ -35,88 +37,115 @@ def set_background(png_file: str):
     )
 
 ###############################################################################
-# Sidebar – choose data source                                                 #
+# Load data – upload or download                                               #
 ###############################################################################
 
 st.title("📈 Simple Stock‑Price Prediction App (Prophet)")
 
-source = st.sidebar.selectbox("How would you like to load data?", ("Upload CSV", "Download from Yahoo Finance"))
+source = st.sidebar.selectbox(
+    "Load data via…",
+    (
+        "Upload CSV",
+        "Download from Yahoo Finance",
+    ),
+)
 
-data = None  # will hold the final DataFrame used everywhere
-symbol_title = ""
+data: pd.DataFrame | None = None
+symbol_title: str = ""
 
+# ────────────────────────────────────────────────────────────────────────────
+# 1. Upload CSV
+# ────────────────────────────────────────────────────────────────────────────
 if source == "Upload CSV":
-    uploaded_files = st.sidebar.file_uploader("Upload CSV file(s)", accept_multiple_files=True, type="csv")
-
-    if not uploaded_files:
-        st.info("⬆️ Upload a CSV file to get started, **or** switch to the download option in the sidebar.")
+    uploaded = st.sidebar.file_uploader(
+        "Upload Yahoo Finance CSV", type="csv", accept_multiple_files=False
+    )
+    if uploaded is not None:
+        data = pd.read_csv(uploaded)
+        symbol_title = uploaded.name.split(".")[0].upper()
+    else:
+        st.info("Upload a CSV file or switch to *Download*.")
         st.stop()
 
-    # Keep only the last uploaded file as the active dataset
-    uploaded_file = uploaded_files[-1]
-    symbol_title = uploaded_file.name.split(".")[0]
-    data = pd.read_csv(uploaded_file)
-
-elif source == "Download from Yahoo Finance":
-    ticker = st.sidebar.text_input("Ticker symbol", value="AAPL", max_chars=10)
+# ────────────────────────────────────────────────────────────────────────────
+# 2. Download using yfinance
+# ────────────────────────────────────────────────────────────────────────────
+if source == "Download from Yahoo Finance":
+    ticker = st.sidebar.text_input("Ticker", "AAPL", max_chars=8).upper().strip()
     col1, col2 = st.sidebar.columns(2)
-    start_date = col1.date_input("Start", value=pd.to_datetime("2024-01-01"))
-    end_date = col2.date_input("End", value=pd.to_datetime("today"))
+    start_date = col1.date_input("Start date", pd.to_datetime("2023-01-01"))
+    end_date = col2.date_input("End date", pd.to_datetime("today"))
+    fetch = st.sidebar.button("🔽 Fetch data")
 
-    fetch_clicked = st.sidebar.button("🔽 Fetch data")
-
-    if fetch_clicked:
+    if fetch:
         if start_date >= end_date:
-            st.error("Start date must be before end date.")
+            st.error("❌ *Start* must be before *End*.")
             st.stop()
-        try:
-            df = yf.download(ticker.upper(), start=start_date, end=end_date, interval="1d", auto_adjust=False)
-        except Exception as e:
-            st.error(f"Download failed: {e}")
+        with st.spinner("Downloading from Yahoo Finance…"):
+            try:
+                data = yf.download(
+                    ticker,
+                    start=start_date,
+                    end=end_date + pd.Timedelta(days=1),  # include end day
+                    interval="1d",
+                    progress=False,
+                    auto_adjust=False,
+                    threads=True,
+                )
+            except Exception as e:
+                st.error(f"Download failed: {e}")
+                st.stop()
+        if data.empty:
+            st.error("No data returned – check symbol or try again later.")
             st.stop()
-        if df.empty:
-            st.error("No data returned – check the ticker symbol and date range.")
-            st.stop()
-        df.reset_index(inplace=True)
-        data = df
-        symbol_title = ticker.upper()
-        st.success(f"Downloaded {len(data)} rows for {symbol_title} ✨")
+        data.reset_index(inplace=True)
+        symbol_title = ticker
+        st.success(f"✅ Downloaded {len(data)} rows for **{symbol_title}**")
 
+# Guard: we need data to proceed
 if data is None:
-    st.stop()  # nothing to work with
+    st.stop()
 
 ###############################################################################
-# Prophet model fit & forecast                                                 #
+# Prepare dataset for Prophet                                                   #
 ###############################################################################
 
-data["Date"] = pd.to_datetime(data["Date"])
+data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+# Drop rows with missing dates or prices
+clean = data.dropna(subset=["Date", "Close"])
+if clean.empty:
+    st.error("Dataset has no usable Date/Close columns.")
+    st.stop()
 
-data1 = (
-    data[["Date", "Close"]]
+prophet_df = (
+    clean[["Date", "Close"]]
     .rename(columns={"Date": "ds", "Close": "y"})
     .sort_values("ds")
     .reset_index(drop=True)
 )
 
-model = Prophet()
-model.fit(data1)
+###############################################################################
+# Fit Prophet model                                                             #
+###############################################################################
 
-future = model.make_future_dataframe(periods=365)
-forecast = model.predict(future)
+with st.spinner("Fitting Prophet model…"):
+    model = Prophet()
+    model.fit(prophet_df)
+    future = model.make_future_dataframe(periods=365)
+    forecast = model.predict(future)
 
 ###############################################################################
-# Sidebar navigation                                                           #
+# Sidebar navigation                                                            #
 ###############################################################################
 
 page = st.sidebar.radio(
     "Navigate",
     (
-        "Home",
+        "Overview",
         "Historical Candlestick",
         "Forecast Line",
         "Actual vs Predicted",
-        "Residuals by Date",
-        "Error Histogram",
+        "Residuals",  # date + histogram combined
         "Components (Year / Week)",
         "Monthly Forecast (12 mo)",
         "Compare Price",
@@ -124,60 +153,53 @@ page = st.sidebar.radio(
 )
 
 ###############################################################################
-# Page implementations                                                         #
+# Page functions                                                                #
 ###############################################################################
 
-def page_home():
+def overview():
     url = "https://facebook.github.io/prophet/"
     st.markdown(
         f"""
-        ### Predict stock **closing prices** with [Prophet]({url})
+        ### Prophet forecast for `{symbol_title}`
+        *Rows*: **{len(clean)}**    *Date range*: {clean['Date'].min().date()} → {clean['Date'].max().date()}
 
-        **Data loaded for:** `{symbol_title}`  
-        Rows: **{len(data)}**   Date range: **{data['Date'].min().date()} → {data['Date'].max().date()}**
-
-        ---
-        #### Data‑loading options
-        * **Upload CSV** – any file with Yahoo Finance column layout.
-        * **Download** – enter a ticker and date range in the sidebar; the app pulls data automatically with [`yfinance`](https://github.com/ranaroussi/yfinance).
+        **Model doc**: [Prophet]({url})
         """
     )
-    st.write("Preview:")
-    st.dataframe(data.head())
+    st.dataframe(clean.head())
 
 
-def page_candlestick():
-    st.subheader(f"Historical prices – {symbol_title}")
+def candlestick():
+    st.subheader(f"{symbol_title} – Historical prices")
     fig = go.Figure(
         data=[
             go.Candlestick(
-                x=data["Date"],
-                open=data["Open"],
-                high=data["High"],
-                low=data["Low"],
-                close=data["Close"],
+                x=clean["Date"],
+                open=clean["Open"],
+                high=clean["High"],
+                low=clean["Low"],
+                close=clean["Close"],
+                name="OHLC",
             )
         ]
     )
-    fig.update_layout(title=f"{symbol_title} – Price history", xaxis_rangeslider_visible=False)
+    fig.update_layout(xaxis_rangeslider_visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
 
-def page_forecast_line():
-    st.subheader(f"12‑month forecast – {symbol_title}")
+def forecast_line():
+    st.subheader("1‑year forecast")
     fig = plot_plotly(model, forecast)
     st.plotly_chart(fig, use_container_width=True)
 
 
-def page_actual_vs_pred():
-    st.subheader("Actual vs predicted close price")
+def actual_vs_pred():
     merged = pd.merge(
-        data1,
+        prophet_df,
         forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]],
         on="ds",
         how="inner",
     )
-
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=merged["ds"], y=merged["y"], name="Actual", mode="lines"))
     fig.add_trace(go.Scatter(x=merged["ds"], y=merged["yhat"], name="Predicted", mode="lines"))
@@ -186,74 +208,50 @@ def page_actual_vs_pred():
             x=pd.concat([merged["ds"], merged["ds"][::-1]]),
             y=pd.concat([merged["yhat_upper"], merged["yhat_lower"][::-1]]),
             fill="toself",
-            fillcolor="rgba(0,100,80,0.2)",
+            fillcolor="rgba(0,100,80,0.15)",
             line=dict(color="rgba(255,255,255,0)"),
             hoverinfo="skip",
             showlegend=False,
         )
     )
-    fig.update_layout(showlegend=True)
     st.plotly_chart(fig, use_container_width=True)
 
 
-def page_residuals():
-    st.subheader("Prediction residuals (actual − predicted)")
-    merged = pd.merge(data1, forecast[["ds", "yhat"]], on="ds", how="inner")
+def residuals():
+    merged = pd.merge(prophet_df, forecast[["ds", "yhat"]], on="ds", how="inner")
     merged["residual"] = merged["y"] - merged["yhat"]
 
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines+markers", name="Residual")
-    )
-    fig.update_layout(
-        shapes=[
-            {
-                "type": "line",
-                "x0": merged["ds"].min(),
-                "y0": 0,
-                "x1": merged["ds"].max(),
-                "y1": 0,
-                "line": {"dash": "dash"},
-            }
-        ]
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Residuals over time")
+        fig1 = go.Figure()
+        fig1.add_trace(
+            go.Scatter(x=merged["ds"], y=merged["residual"], mode="lines", name="Residual")
+        )
+        fig1.add_hline(y=0, line_dash="dash")
+        st.plotly_chart(fig1, use_container_width=True)
+
+    with col2:
+        st.subheader("Residual distribution")
+        fig2 = go.Figure()
+        fig2.add_trace(go.Histogram(x=merged["residual"], nbinsx=40, name="Histogram"))
+        st.plotly_chart(fig2, use_container_width=True)
 
 
-def page_histogram():
-    st.subheader("Distribution of residuals")
-    merged = pd.merge(data1, forecast[["ds", "yhat"]], on="ds", how="inner")
-    merged["residual"] = merged["y"] - merged["yhat"]
-
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=merged["residual"], nbinsx=50))
-    st.plotly_chart(fig, use_container_width=True)
+def components():
+    st.subheader("Prophet components")
+    st.plotly_chart(plot_components_plotly(model, forecast), use_container_width=True)
 
 
-def page_components():
-    st.subheader("Yearly & weekly components")
-    fig = plot_components_plotly(model, forecast)
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def page_monthly():
-    st.subheader("Monthly forecast (next 12 months)")
-    m = Prophet(changepoint_prior_scale=0.01).fit(data1)
+def monthly():
+    st.subheader("Monthly forecast (12 months)")
+    m = Prophet(changepoint_prior_scale=0.01).fit(prophet_df)
     fut = m.make_future_dataframe(periods=12, freq="M")
     fcst = m.predict(fut)
-    fig = m.plot(fcst)
-    plt.title("Monthly forecast – 12 months")
+    fig, ax = plt.subplots(figsize=(10, 4))
+    m.plot(fcst, ax=ax)
     st.pyplot(fig)
 
 
-def page_compare():
-    st.subheader("Compare actual vs predicted price on a specific date")
-    compare_date = st.date_input("Pick a date to compare", value=data["Date"].iloc[-1].date())
-    if compare_date:
-        actual = data1.loc[data1["ds"] == pd.to_datetime(compare_date), "y"]
-        predicted = forecast.loc[forecast["ds"] == pd.to_datetime(compare_date), "yhat"]
-        st.write("Actual close:", float(actual) if not actual.empty else "N/A")
-        st.write("Predicted close:", float(predicted) if not predicted.empty else "N/A")
-
-###############################################################################
-# Router                                                                       #
+def compare_price():
+    st.subheader("Compare actual vs.
